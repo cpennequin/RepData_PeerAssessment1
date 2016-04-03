@@ -2,23 +2,137 @@
 title: "Reproducible Research: Peer Assessment 1"
 output: 
   html_document:
+    theme: cerulean
     keep_md: true
 ---
 
 
 ## Loading and preprocessing the data
 
+```{r}
+# Unzip the zip archive
+unzip("activity.zip")
 
+# Load data
+activity <- read.csv("activity.csv", header = TRUE)
+
+# Clean up
+unlink("activity.csv")
+```
 
 ## What is mean total number of steps taken per day?
 
+For this part of the assignment, you can ignore the missing values in
+the dataset.
+
+```{r}
+# Ignore NA rows
+activity_complete <- activity[complete.cases(activity),]
+```
+
+1. Calculate the total number of steps taken per day
+
+```{r, results="asis"}
+# Summarize and beautify table
+library(plyr)
+table_sum <- ddply(activity_complete,.(date), summarize, "Total Steps"=sum(steps))
+names(table_sum)[1] <- "Date"
+
+# Print the table
+library(xtable)
+xt <- xtable(table_sum, 
+      caption="Table: Daily total steps")
+
+print(xt,
+      type="html",
+      include.rownames = getOption("xtable.include.rownames", FALSE),
+      html.table.attributes = getOption("xtable.html.table.attributes",
+                                        "border=1 align=center"))
+```
+
+2. Make a histogram of the total number of steps taken each day
+
+```{r}
+hist(table_sum[,2], xlab="Total steps taken", ylab="Number of days", main="Histogram for Total steps taken per day", col="green", breaks = seq(0,25000, 1000))
+```
+
+3. Calculate and report the mean and median total number of steps taken per day
+
+```{r}
+calculated_mean <- mean(table_sum$"Total Steps")
+formatted_mean <- prettyNum(calculated_mean,big.mark = ",", decimal.mark = ".")
+print(paste("Mean: ", formatted_mean))
+
+calculated_median <- median(table_sum$"Total Steps")
+formatted_median <- prettyNum(calculated_median,big.mark = ",", decimal.mark = ".")
+print(paste("Median: ", formatted_median))
+```
+
+The **mean** total number of steps taken per day is **`r formatted_mean`**.
+The **median** total number of steps taken per day is **`r formatted_median`**.
 
 
 ## What is the average daily activity pattern?
 
+1. Make a time series plot (i.e. `type = "l"`) of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
+
+```{r}
+mean_time_series <- tapply(activity_complete$steps, activity_complete$interval, mean)
+
+plot(type="l",
+     mean_time_series,
+     main="Average number of steps taken",
+     xlab="5-minute interval",
+     ylab="Average across all days")
+```
+
+
+2. Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+
+```{r}
+interval_max_steps <- which.max(mean_time_series)
+interval <- names(interval_max_steps)
+max_mean <- mean_time_series[interval]
+formatted_max <- prettyNum(max_mean,big.mark = ",", decimal.mark = ".")
+print(interval)
+print(max_mean)
+```
+
+The answer is the interval **`r interval`** at minutes with a maximum of **`r formatted_max`**.
 
 
 ## Imputing missing values
+
+1. Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with `NA`s)
+
+```{r}
+num_NA <- sum(is.na(activity))
+```
+
+There are **`r num_NA` rows** with missing values.
+
+2. Devise a strategy for filling in all of the missing values in the dataset. The strategy does not need to be sophisticated. For example, you could use the mean/median for that day, or the mean for that 5-minute interval, etc.
+
+See [Dplyr cheat sheet](https://www.rstudio.com/wp-content/uploads/2015/02/data-wrangling-cheatsheet.pdf) for details
+
+```{r}
+# Compute 'hole' map
+# missing <- which(is.na(activity))
+
+# New table
+# newActivity <- activity
+# for(i in 1:length(missing)){
+#     print(i)
+#     missing_interval <- activity[missing[i],3]
+#     replacement_value <- mean_time_series[missing_interval]
+#     newActivity[missing[i], 1] <- replacement_value
+# }
+```
+
+
+3. Create a new dataset that is equal to the original dataset but with the missing data filled in.
+
+4. Make a histogram of the total number of steps taken each day and Calculate and report the **mean** and **median** total number of steps taken per day. Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?
 
 
 
