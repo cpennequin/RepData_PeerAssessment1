@@ -22,7 +22,7 @@ missing <- which(is.na(activity))
 # New table
 newActivity <- activity
 for(i in 2:length(missing)){
-    print(i)
+    print(paste("i: ",i))
     missing_interval <- activity[missing[i],3]
     replacement_value <- unname(mean_time_series[missing_interval])
     print(replacement_value)

@@ -1,6 +1,7 @@
 ---
 title: "Reproducible Research: Peer Assessment 1"
 output: 
+  
   html_document:
     theme: cerulean
     keep_md: true
@@ -47,7 +48,7 @@ print(xt,
       type="html",
       include.rownames = getOption("xtable.include.rownames", FALSE),
       html.table.attributes = getOption("xtable.html.table.attributes",
-                                        "border=1 align=center"))
+                                        "border=3, align=center"))
 ```
 
 2. Make a histogram of the total number of steps taken each day
@@ -69,6 +70,7 @@ print(paste("Median: ", formatted_median))
 ```
 
 The **mean** total number of steps taken per day is **`r formatted_mean`**.
+
 The **median** total number of steps taken per day is **`r formatted_median`**.
 
 
@@ -98,42 +100,118 @@ print(interval)
 print(max_mean)
 ```
 
-The answer is the interval **`r interval`** at minutes with a maximum of **`r formatted_max`**.
+The answer is the interval at **`r interval`** minutes with a maximum average of **`r formatted_max`** steps.
 
 
 ## Imputing missing values
 
 1. Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with `NA`s)
 
-```{r}
-num_NA <- sum(is.na(activity))
-```
-
-There are **`r num_NA` rows** with missing values.
+    ```{r}
+    num_NA <- sum(is.na(activity))
+    ```
+    
+    There are **`r num_NA` rows** with missing values.
 
 2. Devise a strategy for filling in all of the missing values in the dataset. The strategy does not need to be sophisticated. For example, you could use the mean/median for that day, or the mean for that 5-minute interval, etc.
 
-See [Dplyr cheat sheet](https://www.rstudio.com/wp-content/uploads/2015/02/data-wrangling-cheatsheet.pdf) for details
-
-```{r}
-# Compute 'hole' map
-# missing <- which(is.na(activity))
-
-# New table
-# newActivity <- activity
-# for(i in 1:length(missing)){
-#     print(i)
-#     missing_interval <- activity[missing[i],3]
-#     replacement_value <- mean_time_series[missing_interval]
-#     newActivity[missing[i], 1] <- replacement_value
-# }
-```
-
+    See [Dplyr cheat sheet](https://www.rstudio.com/wp-content/uploads/2015/02/data-wrangling-cheatsheet.pdf) for details
+    
+    ```{r}
+    # Show the starting point
+    head(activity)
+    
+    # We have decided to replace the missing value by the mean for that interval
+    
+    # Prepare a replacement function using the mean formula
+    impute.mean <- function(x) replace(x, is.na(x), mean(x, na.rm = TRUE))
+    ```
 
 3. Create a new dataset that is equal to the original dataset but with the missing data filled in.
 
-4. Make a histogram of the total number of steps taken each day and Calculate and report the **mean** and **median** total number of steps taken per day. Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?
+    ```{r}
+    # Split the table by interval, run the replacement function, then unsplit
+    filled_activity <- ddply(activity, ~ interval, transform, steps = impute.mean(steps))
+    
+    # Restore the initial order
+    filled_activity <- arrange(filled_activity, date)
+    
+    # Show results
+    head(filled_activity)
+    
+    # Verify there is no more NA
+    sum(is.na(filled_activity))
+    ```
 
+4. Make a histogram of the total number of steps taken each day and Calculate and report the **mean** and **median** total number of steps taken per day. Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?
+    
+    ```{r}
+    # Recompute the sum by day
+    ftable_sum <- ddply(filled_activity,.(date), summarize, "Total Steps"=sum(steps))
+    names(ftable_sum)[1] <- "Date"
+    
+    hist(ftable_sum[,2], xlab="Total steps taken", ylab="Number of days", main="Histogram for Total steps taken per day", col="green", breaks = seq(0,25000, 1000))
+    
+    # The previous values for mean and median were:
+    print(paste("Mean: ", formatted_mean))
+    print(paste("Median: ", formatted_median))
+    
+    # The new values are
+    fcalculated_mean <- mean(ftable_sum$"Total Steps")
+    fformatted_mean <- prettyNum(fcalculated_mean,big.mark = ",", decimal.mark = ".")
+    print(paste("Mean: ", fformatted_mean))
+    
+    fcalculated_median <- median(ftable_sum$"Total Steps")
+    fformatted_median <- prettyNum(fcalculated_median,big.mark = ",", decimal.mark = ".")
+    print(paste("Median: ", fformatted_median))
+    ```
+    
+    To answer the questions in order:
+    
+    * Do these values differ from the estimates from the first part of the assignment?
+    
+    The mean and median values don't differ much from the first part.
+    
+    * What is the impact of imputing missing data on the estimates of the total daily number of steps?
+    
+    While the mean hasn't changed, the histogram shows a significant increase of the total daily number of steps taken at the 10,000 steps bucket.
+    
+    A side-by-side comparison will be useful:
+    
+    ```{r}
+    par(mfrow=c(1,2))
+    hist(table_sum[,2], xlab="Total steps taken", ylab="Number of days", main="Before", col="green", breaks = seq(0,25000, 1000), ylim=c(0,20))
+    hist(ftable_sum[,2], xlab="Total steps taken", ylab="Number of days", main="After", col="green", breaks = seq(0,25000, 1000), ylim=c(0,20))
+    par(mfrow=c(1,1))
+    ```
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+For this part the `weekdays()` function may be of some help here. Use
+the dataset with the filled-in missing values for this part.
+
+1. Create a new factor variable in the dataset with two levels -- "weekday" and "weekend" indicating whether a given date is a weekday or weekend day.
+
+    ```{r}
+    # First compute the week day
+    filled_activity$weekday <- as.factor(weekdays(as.Date(filled_activity$date)))
+    
+    # Then compute the day type
+    filled_activity$daytype <- filled_activity$weekday
+    levels(filled_activity$daytype) <- list(weekday = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday"), weekend = c("Saturday", "Sunday"))
+    
+    str(filled_activity)
+    ```
+
+1. Make a panel plot containing a time series plot (i.e. `type = "l"`) of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis). 
+
+    ```{r}
+    final_table <- ddply(filled_activity,.(daytype, interval), summarize, "average"=mean(steps))
+    
+    library(lattice)
+    xyplot(average ~ interval | daytype, final_table, type="l", lwd=1, layout = c(1,2), xlab="Interval",ylab="Number of steps")
+    ```
+
+
+

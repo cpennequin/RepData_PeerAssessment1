@@ -44,12 +44,12 @@ print(xt,
       type="html",
       include.rownames = getOption("xtable.include.rownames", FALSE),
       html.table.attributes = getOption("xtable.html.table.attributes",
-                                        "border=1 align=center"))
+                                        "border=3, align=center"))
 ```
 
 <!-- html table generated in R 3.1.3 by xtable 1.8-0 package -->
-<!-- Mon Feb 15 05:50:47 2016 -->
-<table border=1 align=center>
+<!-- Mon Apr  4 05:28:51 2016 -->
+<table border=3, align=center>
 <caption align="bottom"> Table: Daily total steps </caption>
 <tr> <th> Date </th> <th> Total Steps </th>  </tr>
   <tr> <td> 2012-10-02 </td> <td align="right"> 126 </td> </tr>
@@ -140,6 +140,7 @@ print(paste("Median: ", formatted_median))
 ```
 
 The **mean** total number of steps taken per day is **10,766.19**.
+
 The **median** total number of steps taken per day is **10,765**.
 
 
@@ -185,44 +186,196 @@ print(max_mean)
 ## 206.1698
 ```
 
-The answer is the interval **835** at minutes with a maximum of **206.1698**.
+The answer is the interval at **835** minutes with a maximum average of **206.1698** steps.
 
 
 ## Imputing missing values
 
 1. Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with `NA`s)
 
-
-```r
-num_NA <- sum(is.na(activity))
-```
-
-There are **2304 rows** with missing values.
+    
+    ```r
+    num_NA <- sum(is.na(activity))
+    ```
+    
+    There are **2304 rows** with missing values.
 
 2. Devise a strategy for filling in all of the missing values in the dataset. The strategy does not need to be sophisticated. For example, you could use the mean/median for that day, or the mean for that 5-minute interval, etc.
 
-See [Dplyr cheat sheet](https://www.rstudio.com/wp-content/uploads/2015/02/data-wrangling-cheatsheet.pdf) for details
-
-
-```r
-# Compute 'hole' map
-# missing <- which(is.na(activity))
-
-# New table
-# newActivity <- activity
-# for(i in 1:length(missing)){
-#     print(i)
-#     missing_interval <- activity[missing[i],3]
-#     replacement_value <- mean_time_series[missing_interval]
-#     newActivity[missing[i], 1] <- replacement_value
-# }
-```
-
+    See [Dplyr cheat sheet](https://www.rstudio.com/wp-content/uploads/2015/02/data-wrangling-cheatsheet.pdf) for details
+    
+    
+    ```r
+    # Show the starting point
+    head(activity)
+    ```
+    
+    ```
+    ##   steps       date interval
+    ## 1    NA 2012-10-01        0
+    ## 2    NA 2012-10-01        5
+    ## 3    NA 2012-10-01       10
+    ## 4    NA 2012-10-01       15
+    ## 5    NA 2012-10-01       20
+    ## 6    NA 2012-10-01       25
+    ```
+    
+    ```r
+    # We have decided to replace the missing value by the mean for that interval
+    
+    # Prepare a replacement function using the mean formula
+    impute.mean <- function(x) replace(x, is.na(x), mean(x, na.rm = TRUE))
+    ```
 
 3. Create a new dataset that is equal to the original dataset but with the missing data filled in.
 
-4. Make a histogram of the total number of steps taken each day and Calculate and report the **mean** and **median** total number of steps taken per day. Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?
+    
+    ```r
+    # Split the table by interval, run the replacement function, then unsplit
+    filled_activity <- ddply(activity, ~ interval, transform, steps = impute.mean(steps))
+    
+    # Restore the initial order
+    filled_activity <- arrange(filled_activity, date)
+    
+    # Show results
+    head(filled_activity)
+    ```
+    
+    ```
+    ##       steps       date interval
+    ## 1 1.7169811 2012-10-01        0
+    ## 2 0.3396226 2012-10-01        5
+    ## 3 0.1320755 2012-10-01       10
+    ## 4 0.1509434 2012-10-01       15
+    ## 5 0.0754717 2012-10-01       20
+    ## 6 2.0943396 2012-10-01       25
+    ```
+    
+    ```r
+    # Verify there is no more NA
+    sum(is.na(filled_activity))
+    ```
+    
+    ```
+    ## [1] 0
+    ```
 
+4. Make a histogram of the total number of steps taken each day and Calculate and report the **mean** and **median** total number of steps taken per day. Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?
+    
+    
+    ```r
+    # Recompute the sum by day
+    ftable_sum <- ddply(filled_activity,.(date), summarize, "Total Steps"=sum(steps))
+    names(ftable_sum)[1] <- "Date"
+    
+    hist(ftable_sum[,2], xlab="Total steps taken", ylab="Number of days", main="Histogram for Total steps taken per day", col="green", breaks = seq(0,25000, 1000))
+    ```
+    
+    ![](PA1_template_files/figure-html/unnamed-chunk-11-1.png) 
+    
+    ```r
+    # The previous values for mean and median were:
+    print(paste("Mean: ", formatted_mean))
+    ```
+    
+    ```
+    ## [1] "Mean:  10,766.19"
+    ```
+    
+    ```r
+    print(paste("Median: ", formatted_median))
+    ```
+    
+    ```
+    ## [1] "Median:  10,765"
+    ```
+    
+    ```r
+    # The new values are
+    fcalculated_mean <- mean(ftable_sum$"Total Steps")
+    fformatted_mean <- prettyNum(fcalculated_mean,big.mark = ",", decimal.mark = ".")
+    print(paste("Mean: ", fformatted_mean))
+    ```
+    
+    ```
+    ## [1] "Mean:  10,766.19"
+    ```
+    
+    ```r
+    fcalculated_median <- median(ftable_sum$"Total Steps")
+    fformatted_median <- prettyNum(fcalculated_median,big.mark = ",", decimal.mark = ".")
+    print(paste("Median: ", fformatted_median))
+    ```
+    
+    ```
+    ## [1] "Median:  10,766.19"
+    ```
+    
+    To answer the questions in order:
+    
+    * Do these values differ from the estimates from the first part of the assignment?
+    
+    The mean and median values don't differ much from the first part.
+    
+    * What is the impact of imputing missing data on the estimates of the total daily number of steps?
+    
+    While the mean hasn't changed, the histogram shows a significant increase of the total daily number of steps taken at the 10,000 steps bucket.
+    
+    A side-by-side comparison will be useful:
+    
+    
+    ```r
+    par(mfrow=c(1,2))
+    hist(table_sum[,2], xlab="Total steps taken", ylab="Number of days", main="Before", col="green", breaks = seq(0,25000, 1000), ylim=c(0,20))
+    hist(ftable_sum[,2], xlab="Total steps taken", ylab="Number of days", main="After", col="green", breaks = seq(0,25000, 1000), ylim=c(0,20))
+    ```
+    
+    ![](PA1_template_files/figure-html/unnamed-chunk-12-1.png) 
+    
+    ```r
+    par(mfrow=c(1,1))
+    ```
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+For this part the `weekdays()` function may be of some help here. Use
+the dataset with the filled-in missing values for this part.
+
+1. Create a new factor variable in the dataset with two levels -- "weekday" and "weekend" indicating whether a given date is a weekday or weekend day.
+
+    
+    ```r
+    # First compute the week day
+    filled_activity$weekday <- as.factor(weekdays(as.Date(filled_activity$date)))
+    
+    # Then compute the day type
+    filled_activity$daytype <- filled_activity$weekday
+    levels(filled_activity$daytype) <- list(weekday = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday"), weekend = c("Saturday", "Sunday"))
+    
+    str(filled_activity)
+    ```
+    
+    ```
+    ## 'data.frame':	17568 obs. of  5 variables:
+    ##  $ steps   : num  1.717 0.3396 0.1321 0.1509 0.0755 ...
+    ##  $ date    : Factor w/ 61 levels "2012-10-01","2012-10-02",..: 1 1 1 1 1 1 1 1 1 1 ...
+    ##  $ interval: int  0 5 10 15 20 25 30 35 40 45 ...
+    ##  $ weekday : Factor w/ 7 levels "Friday","Monday",..: 2 2 2 2 2 2 2 2 2 2 ...
+    ##  $ daytype : Factor w/ 2 levels "weekday","weekend": 1 1 1 1 1 1 1 1 1 1 ...
+    ```
+
+1. Make a panel plot containing a time series plot (i.e. `type = "l"`) of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis). 
+
+    
+    ```r
+    final_table <- ddply(filled_activity,.(daytype, interval), summarize, "average"=mean(steps))
+    
+    library(lattice)
+    xyplot(average ~ interval | daytype, final_table, type="l", lwd=1, layout = c(1,2), xlab="Interval",ylab="Number of steps")
+    ```
+    
+    ![](PA1_template_files/figure-html/unnamed-chunk-14-1.png) 
+
+
+
